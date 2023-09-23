@@ -25,10 +25,11 @@ object StackExchange {
       .getOrCreate()
 
     // Read the CSV file containing orders
+    //test case 4: combination of test 2 and 3
     val ordersDF = spark.read
       .option("header", "false")
       .option("inferSchema", "true")
-      .csv("src\\main\\resources\\exampleOrders-testcase3.csv")
+      .csv("src\\main\\resources\\exampleOrders-testcase4.csv")
       .toDF("OrderID", "UserName", "OrderTime", "OrderType", "Quantity", "Price").withColumn("status",lit("open"))
 
     ordersDF.show(truncate=false)
@@ -56,7 +57,7 @@ object StackExchange {
       .drop("rankSell")
       .withColumn("rankBuy", dense_rank().over(windowSpecBuy))
       .where(col("rankBuy") === 1)
-      .drop("rankSell")
+      .drop("rankBuy")
 
 
     matchOrdersBasedOnQuantity.show(truncate = false)
