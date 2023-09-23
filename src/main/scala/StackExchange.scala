@@ -29,7 +29,7 @@ object StackExchange {
     val ordersDF = spark.read
       .option("header", "false")
       .option("inferSchema", "true")
-      .csv("src\\main\\resources\\exampleOrders-testcase4.csv")
+      .csv("src\\main\\resources\\exampleOrders.csv")
       .toDF("OrderID", "UserName", "OrderTime", "OrderType", "Quantity", "Price").withColumn("status",lit("open"))
 
     ordersDF.show(truncate=false)
@@ -84,6 +84,27 @@ object StackExchange {
     val matchOrder = matchOrdersBasedOnQuantity_OrderTime_latestOrderID_oldOrderID_price.select("latestOrderID","oldOrderID","OrderTime","Quantity","Price")
 
     matchOrder.show(truncate = false)
+
+    // Create a broadcast variable for faster lookup
+    val latestOrderIDSet = spark.sparkContext.broadcast(matchOrder.select("latestOrderID").rdd.map(r => r.getInt(0)).collect.toSet)
+    val oldOrderIDSet = spark.sparkContext.broadcast(matchOrder.select("oldOrderID").rdd.map(r => r.getInt(0)).collect.toSet)
+
+    print(latestOrderIDSet.value)
+
+    // Function to update the status column based on the latestOrderID or oldOrderID
+    def updateStatusColumn(df: DataFrame, idColumnName: String, statusColumnName: String): DataFrame = {
+      df.withColumn(statusColumnName, when(col(idColumnName).isin(latestOrderIDSet.value.toSeq: _*) || col(idColumnName).isin(oldOrderIDSet.value.toSeq: _*), "close").otherwise(col(statusColumnName)))
+    }
+
+    // Update the "BStatus" column in the "buy" dataframe
+    val updatedBuyDF = updateStatusColumn(buyOrder, "BOrderID", "BStatus")
+
+    // Update the "SStatus" column in the "sell" dataframe
+    val updatedSellDF = updateStatusColumn(sellOrder, "SOrderID", "SStatus")
+
+    // Show the updated dataframes
+    updatedBuyDF.show()
+    updatedSellDF.show()
 
     //matchOrder.write.option("header","false").csv("src\\main\\resources\\outputExampleMatches.csv")
 
