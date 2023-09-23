@@ -28,7 +28,7 @@ object StackExchange {
     val ordersDF = spark.read
       .option("header", "false")
       .option("inferSchema", "true")
-      .csv("src\\main\\resources\\exampleOrders.csv")
+      .csv("src\\main\\resources\\exampleOrders-testcase2.csv")
       .toDF("OrderID", "UserName", "OrderTime", "OrderType", "Quantity", "Price").withColumn("status",lit("open"))
 
     ordersDF.show(truncate=false)
@@ -43,9 +43,14 @@ object StackExchange {
       col("status").alias("SStatus"))
     sellOrder.show(truncate = false)
 
+    //test case 2 when sell order with the same Quantity occurs more than once
+    val windowSpec = Window.partitionBy("BOrderID").orderBy(asc("SOrderTime"))
+
 
     val matchOrdersBasedOnQuantity = buyOrder.join(sellOrder,Seq("Quantity"),"inner")
-    matchOrdersBasedOnQuantity.printSchema()
+      .withColumn("rank", dense_rank().over(windowSpec))
+      .where(col("rank") === 1)
+      .drop("rank")
 
     matchOrdersBasedOnQuantity.show(truncate = false)
 
@@ -72,7 +77,7 @@ object StackExchange {
 
     matchOrder.show(truncate = false)
 
-    matchOrder.write.option("header","false").csv("src\\main\\resources\\outputExampleMatches.csv")
+    //matchOrder.write.option("header","false").csv("src\\main\\resources\\outputExampleMatches.csv")
 
 
   }
