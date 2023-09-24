@@ -84,12 +84,13 @@ object StackExchange {
     val matchOrder = matchOrdersBasedOnQuantity_OrderTime_latestOrderID_oldOrderID_price.select("latestOrderID","oldOrderID","OrderTime","Quantity","Price")
 
     matchOrder.show(truncate = false)
+    //matchOrder.write.option("header","false").csv("src\\main\\resources\\outputExampleMatches.csv")
+
 
     // Create a broadcast variable for faster lookup
     val latestOrderIDSet = spark.sparkContext.broadcast(matchOrder.select("latestOrderID").rdd.map(r => r.getInt(0)).collect.toSet)
     val oldOrderIDSet = spark.sparkContext.broadcast(matchOrder.select("oldOrderID").rdd.map(r => r.getInt(0)).collect.toSet)
 
-    print(latestOrderIDSet.value)
 
     // Function to update the status column based on the latestOrderID or oldOrderID
     def updateStatusColumn(df: DataFrame, idColumnName: String, statusColumnName: String): DataFrame = {
@@ -106,7 +107,14 @@ object StackExchange {
     updatedBuyDF.show()
     updatedSellDF.show()
 
-    //matchOrder.write.option("header","false").csv("src\\main\\resources\\outputExampleMatches.csv")
+    // Filter the records where "SStatus" is "open"
+    val buyBookingOrderDF = updatedSellDF.filter(col("SStatus") === "open")
+    val sellBookingOrderDF = updatedBuyDF.filter(col("BStatus") === "open")
+
+    buyBookingOrderDF.show(truncate = false)
+    sellBookingOrderDF.show(truncate = false)
+
+
 
 
   }
