@@ -10,9 +10,12 @@ object StackExchange {
 
   def main(args: Array[String]): Unit = {
 
+    val inputFilePath = args(0)
+    val outputFilePath = args(1)
+
     Logger.getLogger("org").setLevel(Level.OFF)
     Logger.getLogger("akka").setLevel(Level.OFF)
-    println("=====hello world==========")
+
 
     val rootLogger = Logger.getRootLogger()
     rootLogger.setLevel(Level.ERROR)
@@ -29,7 +32,7 @@ object StackExchange {
     val ordersDF = spark.read
       .option("header", "false")
       .option("inferSchema", "true")
-      .csv("src\\main\\resources\\exampleOrders.csv")
+      .csv(inputFilePath)
       .toDF("OrderID", "UserName", "OrderTime", "OrderType", "Quantity", "Price").withColumn("status",lit("open"))
 
     ordersDF.show(truncate=false)
@@ -84,9 +87,10 @@ object StackExchange {
     val matchOrder = matchOrdersBasedOnQuantity_OrderTime_latestOrderID_oldOrderID_price.select("latestOrderID","oldOrderID","OrderTime","Quantity","Price")
 
     matchOrder.show(truncate = false)
-    //matchOrder.write.option("header","false").csv("src\\main\\resources\\outputExampleMatches.csv")
+    matchOrder.write.option("header","false").csv(outputFilePath)
 
 
+    //closing  the orders which are match based on quantity condition
     // Create a broadcast variable for faster lookup
     val latestOrderIDSet = spark.sparkContext.broadcast(matchOrder.select("latestOrderID").rdd.map(r => r.getInt(0)).collect.toSet)
     val oldOrderIDSet = spark.sparkContext.broadcast(matchOrder.select("oldOrderID").rdd.map(r => r.getInt(0)).collect.toSet)
